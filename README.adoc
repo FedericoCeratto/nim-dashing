@@ -1,0 +1,73 @@
+
+image:https://img.shields.io/badge/status-alpha-orange.svg[badge]
+image:https://img.shields.io/badge/version-NONE-orange.svg[badge]
+image:https://img.shields.io/badge/License-LGPL%20v3-blue.svg[License]
+
+Dashing is a library to quickly create terminal-based dashboards in Nim.
+
+image:https://raw.githubusercontent.com/FedericoCeratto/dashing/gh-pages/tty.gif[Example]
+
+Similar libraries for other languages: https://github.com/FedericoCeratto/dashing[dashing] https://github.com/gizak/termui[termui] https://github.com/chjj/blessed[blessed] https://github.com/yaronn/blessed-contrib[blessed-contrib]
+
+=== Installation
+
+Use packages from your Linux distribution, or:
+
+[source,bash]
+----
+nimble install dashing
+----
+
+=== Usage
+
+[source,nim]
+----
+import terminal
+from os import sleep
+
+import dashing
+
+proc demo() =
+  erase_screen()
+  var ui = Tile(kind:HSplit, title:"foo", border_color:"f00", items: @[
+    Tile(kind:VSplit, items: @[
+      Tile(kind:HGauge, val:50, title:"only title", border_color:"f88"),
+      Tile(kind:HGauge, label:"only label", val:20, border_color:"f88"),
+      Tile(kind:HGauge, label:"only label", val:30, border_color:"f88"),
+      Tile(kind:HGauge, label:"only label", val:50, border_color:"f88"),
+      Tile(kind:HGauge, label:"only label", val:80, border_color:"f88"),
+      Tile(kind:HGauge, val:20),
+      Tile(kind:HGauge, label:"label, no border", val:55),
+      Tile(kind:HSplit, items: @[
+        Tile(kind:VGauge, val:0),
+        Tile(kind:VGauge, val:5),
+        Tile(kind:VGauge, val:30),
+        Tile(kind:VGauge, val:50),
+        Tile(kind:VGauge, val:80),
+        Tile(kind:VGauge, val:95),
+      ]),
+    ]),
+    Tile(kind:VSplit, items: @[
+      Tile(kind:HSplit, border_color:"0ff"),
+      Tile(kind:HChart, border_color:"0f0", low_color:"2d2", high_color:"bfb"),
+      Tile(kind:Log, title:"logs", border_color:"000"),
+    ]),
+    Tile(kind:HSplit, items: @[
+      # Tile(kind:VGauge, val:95, low_color:"2d2", high_color:"22d"),
+      # Tile(kind:VGauge, val:95, low_color:"2d2", high_color:"22d"),
+      # Tile(kind:VGauge, val:95, low_color:"2d2", high_color:"22d"),
+      # Tile(kind:VGauge, val:95, low_color:"0c0", high_color:"c00"),
+      Tile(kind:Text, text:"Hello World,\nthis is dashing.", border_color:"000"),
+      Tile(kind:Log, title:"logs", border_color:"000"),
+      Tile(kind:VChart, border_color:"", color:""),
+      Tile(kind:HChart, border_color:"0f0", low_color:"2d2", high_color:"bfb"),
+      Tile(kind:HBrailleChart, border_color:"", color:""),
+      Tile(kind:HBrailleFilledChart, border_color:"", color:"")
+    ])
+  ])
+
+  ui.items[0].items[0].val = 0.5
+  sleep 1000
+  set_cursor_at(0, terminal_height() - 1)
+----
+
