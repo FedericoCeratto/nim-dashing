@@ -7,6 +7,8 @@ Dashing is a library to quickly create terminal-based dashboards in Nim.
 
 image:https://raw.githubusercontent.com/FedericoCeratto/dashing/gh-pages/tty.gif[Example]
 
+Dashing provides high-level components: vertical and horizontal charts, gauges, log panes, text windows and screen splitting. It's built on top of the https://nim-lang.org/docs/terminal.html[terminal] module.
+
 Similar libraries for other languages: https://github.com/FedericoCeratto/dashing[dashing] https://github.com/gizak/termui[termui] https://github.com/chjj/blessed[blessed] https://github.com/yaronn/blessed-contrib[blessed-contrib]
 
 === Installation
