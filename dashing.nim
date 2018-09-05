@@ -360,7 +360,12 @@ proc display_log(self: Tile, tbox: TBox, parent: Tile) =
       print(' '.repeat tbox.w)
 
 proc display_text(self: Tile, tbox: TBox, parent: Tile) =
-  discard
+  let tbox = self.draw_borders_and_title(tbox)
+  set_cursor_at(tbox.x, tbox.y)
+  let textLines = self.text.splitLines()
+  for i in 0..<textLines.len:
+    set_cursor_at(tbox.x, tbox.y + i)
+    print textLines[i]
 
 proc display_braillechart(self: Tile, tbox: TBox, parent: Tile, filled: bool) =
   discard
