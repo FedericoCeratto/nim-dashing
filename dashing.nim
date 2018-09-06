@@ -206,16 +206,14 @@ proc draw_borders_and_title(self: Tile, tbox: TBox): TBox =
   return newTBox(tbox.t, tbox.x, tbox.y, tbox.w, tbox.h)
 
 proc fill_area(self: Tile, tbox: TBox, c: char) =
-  if not self.background_color.is_empty():
-    set_bg_color(self.background_color)
+  set_bg_color(self)
 
   for y in 0..<tbox.h:
     for x in 0..<tbox.w:
       set_cursor_at(tbox.x + x, tbox.y + y)
       print $c
 
-  if not self.background_color.is_empty():
-    reset_color()
+  reset_color()
 
 proc idisplay(self: Tile, tbox: TBox, parent: Tile)
 
@@ -495,7 +493,7 @@ when isMainModule:
   var ui = Tile(kind:Hsplit, title:"Test", border_color:newColor(1), items: @[
       Tile(kind:Hsplit, title:"HSplit", background_color:newColor(67), border_color:newColor(4), color:newColor(6), items: @[
         #Tile(kind:Text, text:"Test\cText"),
-        Tile(kind:Log, title:"Test Title")
+        #Tile(kind:Log, title:"Test Title")
       ]),
       Tile(kind:Hsplit, title:"HSplit 2", items: @[
         Tile(kind:VSplit, title:"Vsplit", items: @[
