@@ -20,6 +20,21 @@ Use packages from your Linux distribution, or:
 nimble install dashing
 ----
 
+=== Dashboard Types
+
+Dashing has the following widgets available to fill up a dashboard with.
+
+* Horizontal Split
+* Vertical Split
+* Horizontal Chart
+* Vertical Chart
+* Horizontal Braille Chart
+* Vertical Braille Chart
+* Horizontal Gauge
+* Vertical Gauge
+* Logger
+* Text
+
 === Usage
 
 [source,nim]
@@ -31,45 +46,44 @@ import dashing
 
 proc demo() =
   erase_screen()
-  var ui = Tile(kind:HSplit, title:"foo", border_color:"f00", items: @[
+  var ui = Tile(kind:HSplit, title:"foo", titleColor:newColor(45), borderColor:newColor(15), items: @[
     Tile(kind:VSplit, items: @[
-      Tile(kind:HGauge, val:50, title:"only title", border_color:"f88"),
-      Tile(kind:HGauge, label:"only label", val:20, border_color:"f88"),
-      Tile(kind:HGauge, label:"only label", val:30, border_color:"f88"),
-      Tile(kind:HGauge, label:"only label", val:50, border_color:"f88"),
-      Tile(kind:HGauge, label:"only label", val:80, border_color:"f88"),
-      Tile(kind:HGauge, val:20),
-      Tile(kind:HGauge, label:"label, no border", val:55),
+      Tile(kind:HGauge, val:newColor(50), title:"only title", borderColor:newColor(1)),
+      Tile(kind:HGauge, label:"only label", val:newColor(20), borderColor:newColor(2)),
+      Tile(kind:HGauge, label:"only label", val:newColor(30), borderColor:newColor(3)),
+      Tile(kind:HGauge, label:"only label", val:newColor(50), borderColor:newColor(4)),
+      Tile(kind:HGauge, label:"only label", val:newColor(80), borderColor:newColor(5)),
+      Tile(kind:HGauge, val:newColor(20)),
+      Tile(kind:HGauge, label:"label, no border", val:newColor(55)),
       Tile(kind:HSplit, items: @[
-        Tile(kind:VGauge, val:0),
-        Tile(kind:VGauge, val:5),
-        Tile(kind:VGauge, val:30),
-        Tile(kind:VGauge, val:50),
-        Tile(kind:VGauge, val:80),
-        Tile(kind:VGauge, val:95),
+        Tile(kind:VGauge, val:newColor(0)),
+        Tile(kind:VGauge, val:newColor(5)),
+        Tile(kind:VGauge, val:newColor(30)),
+        Tile(kind:VGauge, val:newColor(50)),
+        Tile(kind:VGauge, val:newColor(80)),
+        Tile(kind:VGauge, val:newColor(95)),
       ]),
     ]),
     Tile(kind:VSplit, items: @[
-      Tile(kind:HSplit, border_color:"0ff"),
-      Tile(kind:HChart, border_color:"0f0", low_color:"2d2", high_color:"bfb"),
-      Tile(kind:Log, title:"logs", border_color:"000"),
+      Tile(kind:HSplit, borderColor:newColor(87)),
+      Tile(kind:HChart, borderColor:newColor(34), lowColor:newColor(197), highColor:newColor(88)),
+      Tile(kind:Log, title:"logs", borderColor:newColor(0)),
     ]),
     Tile(kind:HSplit, items: @[
-      # Tile(kind:VGauge, val:95, low_color:"2d2", high_color:"22d"),
-      # Tile(kind:VGauge, val:95, low_color:"2d2", high_color:"22d"),
-      # Tile(kind:VGauge, val:95, low_color:"2d2", high_color:"22d"),
-      # Tile(kind:VGauge, val:95, low_color:"0c0", high_color:"c00"),
-      Tile(kind:Text, text:"Hello World,\nthis is dashing.", border_color:"000"),
-      Tile(kind:Log, title:"logs", border_color:"000"),
-      Tile(kind:VChart, border_color:"", color:""),
-      Tile(kind:HChart, border_color:"0f0", low_color:"2d2", high_color:"bfb"),
-      Tile(kind:HBrailleChart, border_color:"", color:""),
-      Tile(kind:HBrailleFilledChart, border_color:"", color:"")
+      Tile(kind:Text, text:"Hello World,\nthis is dashing."),
+      Tile(kind:Log, title:"logs"),
+      Tile(kind:VChart),
+      Tile(kind:HChart, borderColor:newColor(0), lowColor:newColor(56), highColor:newColor(68)),
+      Tile(kind:HBrailleChart),
+      Tile(kind:HBrailleFilledChart)
     ])
   ])
 
   ui.items[0].items[0].val = 0.5
-  sleep 1000
-  set_cursor_at(0, terminal_height() - 1)
+  while true:
+    display(ui)
 ----
 
+=== Future features
+
+* True Color support
