@@ -24,6 +24,8 @@ const
 
   max_chart_datapoints = 256
   max_logs = 128
+  max_colors = 256
+  unicode_escape = "\u001b"
 
 type
   TBox = object
@@ -35,9 +37,10 @@ type
 
   Tile* = ref object of RootObj
     title*: string
-    border_color*: string
-    color*: string
-    low_color*, mid_color*, high_color*: string
+    border_color*: ColorRange 
+    color*: ColorRange
+    title_color*: ColorRange
+    low_color*, mid_color*, high_color*: ColorRange
     case kind*: TileKind
     of HSplit, VSplit, HBrailleChart, HBrailleFilledChart:
       items*: seq[Tile]
@@ -47,6 +50,7 @@ type
     of HGauge, VGauge:
       val*: int
       label*: string
+      label_color*: ColorRange
     of Log:
       logs*: array[max_logs, string]
       logs_cnt, last_log_pos: int
@@ -56,9 +60,14 @@ type
 
   RGBColor = tuple
     r, g, b: int
-
+  
+  #TODO: give this a different range depending on terminal color type
+  ColorRange = range[0..max_colors]
 
 # #
+
+proc newColor(x: int): ColorRange =
+  return ColorRange(x)
 
 proc print(s: string) =
   when defined(testing):
@@ -71,9 +80,11 @@ proc set_cursor_at*(x, y: int) =
   when not defined(testing):
     set_cursor_pos(x, y)
 
-
 proc is_empty(s: string): bool =
-  return s.isNil or s == ""
+  s.isNil
+
+proc is_empty(c: ColorRange): bool =
+  ord(c) == 0
 
 
 proc newTBox(t: string, x, y, w, h: int): TBox =
@@ -97,48 +108,59 @@ proc unpack_color(c: string): RGBColor =
   else:
     raise newException(Exception, "unsupported color $#" % c)
 
-proc set_color(c: RGBColor) =
-  print "\x1b[38;2;$#;$#;$#m" % [$c.r, $c.g, $c.b]
+proc reset_color() =
+  print(unicode_escape & "[0m")
+
+proc set_color(c: ColorRange) =
+  print(unicode_escape & "[38;5;$#m" % $c)
+
+proc set_color(c: int) =
+  set_color(ColorRange(c))
 
 proc set_color(c: string) =
   ## Set foreground color
   if c.isNil or c == "":
     return
-  set_color(unpack_color(c))
+  set_color(parseInt(c))
 
-proc set_merged_color(lo, mid, hi: string, ratio: float) =
-  ## Set merged foreground color
-  var lo_c, hi_c: RGBColor
-  var ratio = ratio
-  if mid == nil or mid == "":
-    lo_c = unpack_color(lo)
-    hi_c = unpack_color(hi)
-  elif ratio < 0.5:
-    lo_c = unpack_color(mid)
-    hi_c = unpack_color(hi)
-    ratio *= 2
-  else:
-    lo_c = unpack_color(lo)
-    hi_c = unpack_color(mid)
-    ratio -= 0.5
-    ratio *= 2
-
-  let c:RGBColor = (
-    int(lo_c.r.float * ratio + hi_c.r.float * (1.0 - ratio)),
-    int(lo_c.g.float * ratio + hi_c.g.float * (1.0 - ratio)),
-    int(lo_c.b.float * ratio + hi_c.b.float * (1.0 - ratio)),
-  )
-  set_color c
-
+#proc set_merged_color(lo, mid, hi: ColorRange, ratio: float) =
+#  ## Set merged foreground color
+#  var lo_c, hi_c: RGBColor
+#  var ratio = ratio
+#  if mid == nil or mid == "":
+#    lo_c = unpack_color(lo)
+#    hi_c = unpack_color(hi)
+#  elif ratio < 0.5:
+#    lo_c = unpack_color(mid)
+#    hi_c = unpack_color(hi)
+#    ratio *= 2
+#  else:
+#    lo_c = unpack_color(lo)
+#    hi_c = unpack_color(mid)
+#    ratio -= 0.5
+#    ratio *= 2
+#
+#  let c:RGBColor = (
+#    int(lo_c.r.float * ratio + hi_c.r.float * (1.0 - ratio)),
+#    int(lo_c.g.float * ratio + hi_c.g.float * (1.0 - ratio)),
+#    int(lo_c.b.float * ratio + hi_c.b.float * (1.0 - ratio)),
+#  )
 
 
 proc draw_borders(self: Tile, tbox: TBox) =
-  set_color(self.border_color)
-
   # top border
   set_cursor_at(tbox.x, tbox.y)
-  #log.write("$# $# $# $# $#\n" % [$self.kind, $tbox.x, $tbox.y, $tbox.w, $tbox.h])
-  print(border_tl & border_h.repeat(tbox.w - 2) & border_tr)
+  if not self.border_color.is_empty():
+    set_color(self.border_color)
+
+  if self.title.len != 0:
+    #Skip the title area
+    print(border_tl)
+    set_cursor_at(tbox.x + (3 + self.title.len), tbox.y)
+    print(border_h.repeat(tbox.w - (4 + self.title.len)) & border_tr)
+  else:
+    #log.write("$# $# $# $# $#\n" % [$self.kind, $tbox.x, $tbox.y, $tbox.w, $tbox.h])
+    print(border_tl & border_h.repeat(tbox.w - 2) & border_tr)
 
   # left and right
   for dy in 1..tbox.h-2:
@@ -154,18 +176,22 @@ proc draw_borders(self: Tile, tbox: TBox) =
 
 proc draw_title(self: Tile, tbox: TBox, fill_all_width: bool) =
   ##
-  discard # FIXME
+  reset_color()
+  if not self.title_color.is_empty():
+    set_color self.title_color
+  set_cursor_at(tbox.x + 2, tbox.y)
+  print self.title
 
 proc draw_borders_and_title(self: Tile, tbox: TBox): TBox =
   ## Draw borders and title as needed and returns inset (x, y, width, height)
-  if self.border_color != "":
+  if self.border_color != max_colors:
     self.draw_borders(tbox)
 
   if self.title.len != 0:
-    let fill_all_width = (self.border_color == "")
+    let fill_all_width = (self.border_color == max_colors)
     self.draw_title(tbox, fill_all_width)
 
-  if self.border_color != "":
+  if self.border_color != max_colors:
     return newTBox(tbox.t, tbox.x + 1, tbox.y + 1, tbox.w - 2, tbox.h - 2)
 
   elif self.title != "":
@@ -178,7 +204,6 @@ proc fill_area(self: Tile, tbox: TBox, c: char) =
   discard
 
 proc idisplay(self: Tile, tbox: TBox, parent: Tile)
-
 
 proc display_vsplit(self: Tile, tbox: TBox, parent: Tile) =
   ## Render current tile and its items. Recurse into nested splits
@@ -226,13 +251,15 @@ proc display_hsplit(self: Tile, tbox: TBox, parent: Tile) =
 
 proc display_hchart(self: Tile, tbox: TBox, parent: Tile) =
   let tbox = self.draw_borders_and_title(tbox)
-  set_color self.color
+  if not self.color.is_empty():
+    set_color self.color
 
   for dy in 0..<tbox.h:
-    if self.low_color != "":
+    if not self.low_color.is_empty():
+      set_color(self.low_color)
       # generate gradient
-      set_merged_color(self.low_color, self.mid_color, self.high_color,
-        dy.float / tbox.h.float)
+      #set_merged_color(self.low_color, self.mid_color, self.high_color,
+      #  dy.float / tbox.h.float)
 
     var bar = ""
     for dx in 0..<tbox.w:
@@ -263,7 +290,8 @@ proc display_vchart(self: Tile, tbox: TBox, parent: Tile) =
     tbox = self.draw_borders_and_title(tbox)
     filled_element = hbar_elements[^1]
     scale = tbox.w.float / 100.0
-  set_color self.color
+  if not self.color.is_empty():
+    set_color self.color
   for dx in 0..<tbox.h:
     var bar = ""
     let index1 = 50 - (tbox.h) + dx
@@ -296,7 +324,8 @@ proc display_hgauge(self: Tile, tbox: TBox, parent: Tile) =
 
   let index = int((wi - wi.int.float) * 7)
   var bar = hbar_elements[^1].repeat(int(wi)) & hbar_elements[index]
-  set_color self.color
+  if not self.color.is_empty():
+    set_color self.color
   set_cursor_at(tbox.x, tbox.y + 1)
 
   var pad: int
@@ -321,13 +350,15 @@ proc display_hgauge(self: Tile, tbox: TBox, parent: Tile) =
 proc display_vgauge(self: Tile, tbox: TBox, parent: Tile) =
   let tbox = self.draw_borders_and_title(tbox)
   let nh = tbox.h.float * (self.val.float / 100.5)
-  set_color self.color
+  if not self.color.is_empty():
+    set_color self.color
   for dy in 0..<tbox.h:
     set_cursor_at(tbox.x, tbox.y + tbox.h - dy - 1)
     if not self.low_color.is_empty:
       # generate gradient
-      set_merged_color(self.low_color, self.mid_color, self.high_color,
-        dy.float / tbox.h.float)
+      set_color(self.low_color)
+      #set_merged_color(self.low_color, self.mid_color, self.high_color,
+      #  dy.float / tbox.h.float)
 
     var bar: string
     if dy < int(nh):
@@ -344,7 +375,8 @@ proc display_log(self: Tile, tbox: TBox, parent: Tile) =
   let tbox = self.draw_borders_and_title(tbox)
   let log_range = min(self.logs_cnt, tbox.h)
   let start = self.logs_cnt - log_range
-  set_color self.color
+  if not self.color.is_empty():
+    set_color self.color
   for i in 0..<log_range:
     assert log_range > 0
     let selector = (self.last_log_pos - log_range + i + 1 + max_logs) mod max_logs
@@ -360,7 +392,14 @@ proc display_log(self: Tile, tbox: TBox, parent: Tile) =
       print(' '.repeat tbox.w)
 
 proc display_text(self: Tile, tbox: TBox, parent: Tile) =
-  discard
+  let tbox = self.draw_borders_and_title(tbox)
+  set_cursor_at(tbox.x, tbox.y)
+  let textLines = self.text.splitLines()
+  if not self.color.is_empty():
+    set_color self.color
+  for i in 0..<textLines.len:
+    set_cursor_at(tbox.x, tbox.y + i)
+    print textLines[i]
 
 proc display_braillechart(self: Tile, tbox: TBox, parent: Tile, filled: bool) =
   discard
@@ -379,6 +418,7 @@ proc idisplay(self: Tile, tbox: TBox, parent: Tile) =
   ## Render current tile and its items. Recurse into nested splits if any.
   # park cursor in a safe place and reset color
   #FIXME print(t.move(terminal_height() - 3, 0) + t.color(0))
+  reset_color()
   set_cursor_at(terminal_width() - 3, 0)
 
   #log.write("I> $# $# $# $#\n" % [$tbox.x, $tbox.y, $tbox.w, $tbox.h])
@@ -409,13 +449,15 @@ proc idisplay(self: Tile, tbox: TBox, parent: Tile) =
 proc display*(self: Tile) =
   ## Render current tile and its items. Recurse into nested splits if any.
   let tbox = newTBox("", 1, 1, terminalWidth(), terminalHeight() - 1)
-  self.idisplay(tbox, Tile())
+  #self.idisplay(tbox, Tile())
   # park cursor in a safe place and reset color
   #FIXME print(t.move(terminal_height() - 3, 0) + t.color(0))
   set_cursor_at(terminal_width() - 3, 0)
 
   #set_cursor_at(0, terminal_height())
   self.idisplay(tbox, Tile())
+  when not defined(testing):
+    hideCursor()
 
 proc add_dp*(chart: var Tile, val: float) =
   ## Add datapoint
@@ -425,3 +467,32 @@ proc add_dp*(chart: var Tile, val: float) =
   if chart.datapoints_cnt != max_chart_datapoints:
     chart.datapoints_cnt.inc
   chart.datapoints[chart.last_dp_pos] = val
+
+proc cleanExit() {.noconv.} = 
+  echo "Quitting"
+  when not defined(testing):
+    showCursor()
+  quit(0)
+
+setControlCHook(cleanExit)
+
+when isMainModule:
+  var ui = Tile(kind:Hsplit, title:"Test", border_color:newColor(1), items: @[
+      Tile(kind:Hsplit, title:"HSplit", border_color:newColor(4), color:newColor(6), items: @[
+        Tile(kind:Text, text:"Test\cText"),
+        Tile(kind:Log, title:"Test Title")
+      ]),
+      Tile(kind:Hsplit, title:"HSplit 2", items: @[
+        Tile(kind:VSplit, title:"Vsplit", items: @[
+          Tile(kind:HGauge, title:"Test HGauge", label:"HGauyge Label", val:20),
+          Tile(kind:VGauge, title:"Test VGauge", label:"VGauyge Label", val:20)
+        ])
+      ]),
+  ])
+
+  ui.items[0].items[1].add_log("Test String")
+  ui.items[0].items[1].add_log("Test2 String")
+
+  erase_screen()
+  while true:
+    display(ui)
