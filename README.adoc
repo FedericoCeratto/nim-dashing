@@ -46,40 +46,36 @@ import dashing
 
 proc demo() =
   erase_screen()
-  var ui = Tile(kind:HSplit, title:"foo", titleColor:"45", borderColor:15, items: @[
+  var ui = Tile(kind:HSplit, title:"foo", titleColor:newColor(45), borderColor:newColor(15), items: @[
     Tile(kind:VSplit, items: @[
-      Tile(kind:HGauge, val:50, title:"only title", borderColor:1),
-      Tile(kind:HGauge, label:"only label", val:20, borderColor:2),
-      Tile(kind:HGauge, label:"only label", val:30, borderColor:3),
-      Tile(kind:HGauge, label:"only label", val:50, borderColor:4),
-      Tile(kind:HGauge, label:"only label", val:80, borderColor:5),
-      Tile(kind:HGauge, val:20),
-      Tile(kind:HGauge, label:"label, no border", val:55),
+      Tile(kind:HGauge, val:newColor(50), title:"only title", borderColor:newColor(1)),
+      Tile(kind:HGauge, label:"only label", val:newColor(20), borderColor:newColor(2)),
+      Tile(kind:HGauge, label:"only label", val:newColor(30), borderColor:newColor(3)),
+      Tile(kind:HGauge, label:"only label", val:newColor(50), borderColor:newColor(4)),
+      Tile(kind:HGauge, label:"only label", val:newColor(80), borderColor:newColor(5)),
+      Tile(kind:HGauge, val:newColor(20)),
+      Tile(kind:HGauge, label:"label, no border", val:newColor(55)),
       Tile(kind:HSplit, items: @[
-        Tile(kind:VGauge, val:0),
-        Tile(kind:VGauge, val:5),
-        Tile(kind:VGauge, val:30),
-        Tile(kind:VGauge, val:50),
-        Tile(kind:VGauge, val:80),
-        Tile(kind:VGauge, val:95),
+        Tile(kind:VGauge, val:newColor(0)),
+        Tile(kind:VGauge, val:newColor(5)),
+        Tile(kind:VGauge, val:newColor(30)),
+        Tile(kind:VGauge, val:newColor(50)),
+        Tile(kind:VGauge, val:newColor(80)),
+        Tile(kind:VGauge, val:newColor(95)),
       ]),
     ]),
     Tile(kind:VSplit, items: @[
-      Tile(kind:HSplit, borderColor:"0ff"),
-      Tile(kind:HChart, borderColor:"0f0", lowColor:"2d2", highColor:"bfb"),
-      Tile(kind:Log, title:"logs", borderColor:"000"),
+      Tile(kind:HSplit, borderColor:newColor(87)),
+      Tile(kind:HChart, borderColor:newColor(34), lowColor:newColor(197), highColor:newColor(88)),
+      Tile(kind:Log, title:"logs", borderColor:newColor(0)),
     ]),
     Tile(kind:HSplit, items: @[
-      # Tile(kind:VGauge, val:95, lowColor:"2d2", highColor:"22d"),
-      # Tile(kind:VGauge, val:95, lowColor:"2d2", highColor:"22d"),
-      # Tile(kind:VGauge, val:95, lowColor:"2d2", highColor:"22d"),
-      # Tile(kind:VGauge, val:95, lowColor:"0c0", highColor:"c00"),
-      Tile(kind:Text, text:"Hello World,\nthis is dashing.", borderColor:"000"),
-      Tile(kind:Log, title:"logs", borderColor:"000"),
-      Tile(kind:VChart, borderColor:"", color:""),
-      Tile(kind:HChart, borderColor:"0f0", lowColor:"2d2", highColor:"bfb"),
-      Tile(kind:HBrailleChart, borderColor:"", color:""),
-      Tile(kind:HBrailleFilledChart, borderColor:"", color:"")
+      Tile(kind:Text, text:"Hello World,\nthis is dashing."),
+      Tile(kind:Log, title:"logs"),
+      Tile(kind:VChart),
+      Tile(kind:HChart, borderColor:newColor(0), lowColor:newColor(56), highColor:newColor(68)),
+      Tile(kind:HBrailleChart),
+      Tile(kind:HBrailleFilledChart)
     ])
   ])
 
