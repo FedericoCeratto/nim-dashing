@@ -137,8 +137,14 @@ proc draw_borders(self: Tile, tbox: TBox) =
 
   # top border
   set_cursor_at(tbox.x, tbox.y)
-  #log.write("$# $# $# $# $#\n" % [$self.kind, $tbox.x, $tbox.y, $tbox.w, $tbox.h])
-  print(border_tl & border_h.repeat(tbox.w - 2) & border_tr)
+  if self.title.len != 0:
+    #Skip the title area
+    print(border_tl)
+    set_cursor_at(tbox.x + (3 + self.title.len), tbox.y)
+    print(border_h.repeat(tbox.w - (4 + self.title.len)) & border_tr)
+  else:
+    #log.write("$# $# $# $# $#\n" % [$self.kind, $tbox.x, $tbox.y, $tbox.w, $tbox.h])
+    print(border_tl & border_h.repeat(tbox.w - 2) & border_tr)
 
   # left and right
   for dy in 1..tbox.h-2:
@@ -154,7 +160,8 @@ proc draw_borders(self: Tile, tbox: TBox) =
 
 proc draw_title(self: Tile, tbox: TBox, fill_all_width: bool) =
   ##
-  discard # FIXME
+  set_cursor_at(tbox.x + 2, tbox.y)
+  print self.title
 
 proc draw_borders_and_title(self: Tile, tbox: TBox): TBox =
   ## Draw borders and title as needed and returns inset (x, y, width, height)
@@ -421,6 +428,8 @@ proc display*(self: Tile) =
 
   #set_cursor_at(0, terminal_height())
   self.idisplay(tbox, Tile())
+  when not defined(testing):
+    hideCursor()
 
 proc add_dp*(chart: var Tile, val: float) =
   ## Add datapoint
@@ -430,3 +439,17 @@ proc add_dp*(chart: var Tile, val: float) =
   if chart.datapoints_cnt != max_chart_datapoints:
     chart.datapoints_cnt.inc
   chart.datapoints[chart.last_dp_pos] = val
+
+when isMainModule:
+  var ui = Tile(kind:Hsplit, title:"Test", border_color:"f00", items: @[
+    Tile(kind:Text, text:"Test\cText"),
+    Tile(kind:Log, title:"Test Title")
+  ])
+
+  ui.items[1].add_log("Test String")
+  ui.items[1].add_log("Test2 String")
+
+  erase_screen()
+  while true:
+    display(ui)
+
