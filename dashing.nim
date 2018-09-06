@@ -44,6 +44,7 @@ type
     case kind*: TileKind
     of HSplit, VSplit, HBrailleChart, HBrailleFilledChart:
       items*: seq[Tile]
+      background_color: ColorRange
     of VChart, HChart:
       datapoints*: array[max_chart_datapoints, float]
       datapoints_cnt, last_dp_pos: int
@@ -111,6 +112,13 @@ proc unpack_color(c: string): RGBColor =
 proc reset_color() =
   print(unicode_escape & "[0m")
 
+proc set_bg_color(c: ColorRange) =
+  print(unicode_escape & "[48;5;$#m" % $c)
+
+proc set_bg_color(self: Tile) =
+  if not self.background_color.is_empty():
+    set_bg_color(self.background_color)
+
 proc set_color(c: ColorRange) =
   print(unicode_escape & "[38;5;$#m" % $c)
 
@@ -146,7 +154,6 @@ proc set_color(c: string) =
 #    int(lo_c.b.float * ratio + hi_c.b.float * (1.0 - ratio)),
 #  )
 
-
 proc draw_borders(self: Tile, tbox: TBox) =
   # top border
   set_cursor_at(tbox.x, tbox.y)
@@ -172,7 +179,6 @@ proc draw_borders(self: Tile, tbox: TBox) =
   # bottom
   set_cursor_at(tbox.x, tbox.h - 1 + tbox.y)
   print border_bl & border_h.repeat(tbox.w - 2) & border_br
-
 
 proc draw_title(self: Tile, tbox: TBox, fill_all_width: bool) =
   ##
@@ -200,8 +206,14 @@ proc draw_borders_and_title(self: Tile, tbox: TBox): TBox =
   return newTBox(tbox.t, tbox.x, tbox.y, tbox.w, tbox.h)
 
 proc fill_area(self: Tile, tbox: TBox, c: char) =
-  # FIXME
-  discard
+  set_bg_color(self)
+
+  for y in 0..<tbox.h:
+    for x in 0..<tbox.w:
+      set_cursor_at(tbox.x + x, tbox.y + y)
+      print $c
+
+  reset_color()
 
 proc idisplay(self: Tile, tbox: TBox, parent: Tile)
 
@@ -231,6 +243,7 @@ proc display_hsplit(self: Tile, tbox: TBox, parent: Tile) =
   ## Render current tile and its items. Recurse into nested splits
   let tbox = self.draw_borders_and_title(tbox)
 
+
   if self.items.len == 0:
       # empty split
       self.fill_area(tbox, ' ')
@@ -245,7 +258,7 @@ proc display_hsplit(self: Tile, tbox: TBox, parent: Tile) =
       x += item_width
 
   # Fill leftover area
-  let leftover_x = tbox.w - x + 1
+  #let leftover_x = tbox.w - x + 1
   #if leftover_x > 0:
   #  self.fill_area(newTBox(tbox.t, x, tbox.y, leftover_x, tbox.h), ' ')
 
@@ -478,9 +491,9 @@ setControlCHook(cleanExit)
 
 when isMainModule:
   var ui = Tile(kind:Hsplit, title:"Test", border_color:newColor(1), items: @[
-      Tile(kind:Hsplit, title:"HSplit", border_color:newColor(4), color:newColor(6), items: @[
-        Tile(kind:Text, text:"Test\cText"),
-        Tile(kind:Log, title:"Test Title")
+      Tile(kind:Hsplit, title:"HSplit", background_color:newColor(67), border_color:newColor(4), color:newColor(6), items: @[
+        #Tile(kind:Text, text:"Test\cText"),
+        #Tile(kind:Log, title:"Test Title")
       ]),
       Tile(kind:Hsplit, title:"HSplit 2", items: @[
         Tile(kind:VSplit, title:"Vsplit", items: @[
@@ -490,8 +503,8 @@ when isMainModule:
       ]),
   ])
 
-  ui.items[0].items[1].add_log("Test String")
-  ui.items[0].items[1].add_log("Test2 String")
+  #ui.items[0].items[1].add_log("Test String")
+  #ui.items[0].items[1].add_log("Test2 String")
 
   erase_screen()
   while true:
