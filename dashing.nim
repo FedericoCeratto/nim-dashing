@@ -2,11 +2,16 @@
 # Copyright 2018 Federico Ceratto <federico.ceratto@gmail.com>
 # Released under LGPLv3. See LICENSE file.
 
-import os, terminal, strutils
+import os,
+  strutils,
+  terminal,
+  unicode
+
+from math import floor
+
+let dlog = open("dashing.log", fmAppend)  # FIXME
 
 # "graphic" elements
-
-let log = open("dashing.log", fmAppend)
 
 const
   border_bl = "└"
@@ -17,11 +22,20 @@ const
   border_v = "│"
   hbar_elements = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
   vbar_elements = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
-  braille_left = (0x01, 0x02, 0x04, 0x40, 0)
-  braille_right = (0x08, 0x10, 0x20, 0x80, 0)
-  braille_r_left = (0x04, 0x02, 0x01)
-  braille_r_right = (0x20, 0x10, 0x08)
-
+  braille_h_symbols = [
+    "⠀", "⢀", "⠠", "⠐", "⠈",
+    "⡀", "⣀", "⡠", "⡐", "⡈",
+    "⠄", "⢄", "⠤", "⠔", "⠌",
+    "⠂", "⢂", "⠢", "⠒", "⠊",
+    "⠁", "⢁", "⠡", "⠑", "⠉",
+  ]
+  braille_h_symbols_filled = [
+    "⠀", "⢀", "⢠", "⢰", "⢸",
+    "⡀", "⣀", "⣠", "⣰", "⣸",
+    "⡄", "⣄", "⣤", "⣴", "⣼",
+    "⡆", "⣆", "⣦", "⣶", "⣾",
+    "⡇", "⣇", "⣧", "⣷", "⣿",
+  ]
   max_chart_datapoints = 256
   max_logs = 128
 
@@ -39,9 +53,9 @@ type
     color*: string
     low_color*, mid_color*, high_color*: string
     case kind*: TileKind
-    of HSplit, VSplit, HBrailleChart, HBrailleFilledChart:
+    of HSplit, VSplit:
       items*: seq[Tile]
-    of VChart, HChart:
+    of HBrailleChart, HBrailleFilledChart, VChart, HChart:
       datapoints*: array[max_chart_datapoints, float]
       datapoints_cnt, last_dp_pos: int
     of HGauge, VGauge:
@@ -73,7 +87,7 @@ proc set_cursor_at*(x, y: int) =
 
 
 proc is_empty(s: string): bool =
-  return s.isNil or s == ""
+  return s == ""
 
 
 proc newTBox(t: string, x, y, w, h: int): TBox =
@@ -102,7 +116,7 @@ proc set_color(c: RGBColor) =
 
 proc set_color(c: string) =
   ## Set foreground color
-  if c.isNil or c == "":
+  if c == "":
     return
   set_color(unpack_color(c))
 
@@ -110,7 +124,7 @@ proc set_merged_color(lo, mid, hi: string, ratio: float) =
   ## Set merged foreground color
   var lo_c, hi_c: RGBColor
   var ratio = ratio
-  if mid == nil or mid == "":
+  if mid == "":
     lo_c = unpack_color(lo)
     hi_c = unpack_color(hi)
   elif ratio < 0.5:
@@ -360,10 +374,78 @@ proc display_log(self: Tile, tbox: TBox, parent: Tile) =
       print(' '.repeat tbox.w)
 
 proc display_text(self: Tile, tbox: TBox, parent: Tile) =
-  discard
+  let tbox = self.draw_borders_and_title(tbox)
+  set_color self.color
+  var cnt = 0
+  for line in self.text.splitLines():
+    set_cursor_at(tbox.x, tbox.y + cnt)
+    let space = tbox.w - line.len
+    if space >= 0:
+      print(line & ' '.repeat(space))
+    else:
+      print(line[0..tbox.w-1])
+    cnt.inc
+    if cnt > tbox.y:
+      return
 
-proc display_braillechart(self: Tile, tbox: TBox, parent: Tile, filled: bool) =
-  discard
+proc generate_hbraille(l, r: int): string =
+  ## Generate one braille symbol. Time goes left to right.
+  braille_h_symbols[l * 5 + r]
+
+proc generate_filled_hbraille(l, r: int): string =
+  ## Generate one braille symbol. Time goes left to right.
+  ## The area below the symbol is filled.
+  braille_h_symbols_filled[l * 5 + r]
+
+proc hbraille_index(dp: float, dx, height: int): int =
+  let q = (0.98 - dp / 102.0) * height.float
+  if dx == int(q):
+    int((q.floor - q + 1) * 5)
+  else:
+    0  # blank cell
+
+proc hbraille_filled_index(dp: float, dx, height: int): int =
+  let q = (0.98 - dp / 102.0) * height.float
+  if dx == int(q):
+    int((q.floor - q + 1) * 5)
+  elif dx > q.int:
+    4  # filled cell
+  else:
+    0  # blank cell
+
+
+proc display_hbraillechart(self: Tile, tbox: TBox, parent: Tile, filled: bool) =
+  ## Display braille chart. Time goes left to right.
+  let
+    tbox = self.draw_borders_and_title(tbox)
+    filled_element = hbar_elements[^1]
+    scale = tbox.w.float / 100.0
+  set_color self.color
+  for dy in 0..<tbox.h:
+    var bar = ""
+    for dx in 0..<tbox.w:
+      let dp_index =  self.datapoints_cnt + (dx - tbox.w) * 2
+      assert dp_index <= self.datapoints_cnt
+      var dp_l, dp_r: float
+      if dp_index >= 0 and dp_index + 1 <= self.datapoints_cnt:
+        dp_l = self.datapoints[dp_index]
+        dp_r = self.datapoints[dp_index + 1]
+        if filled:
+          let index_l = hbraille_filled_index(dp_l, dy, tbox.h)
+          let index_r = hbraille_filled_index(dp_r, dy, tbox.h)
+          bar.add generate_filled_hbraille(index_l, index_r)
+        else:
+          let index_l = hbraille_index(dp_l, dy, tbox.h)
+          let index_r = hbraille_index(dp_r, dy, tbox.h)
+          bar.add generate_hbraille(index_l, index_r)
+      else:
+        # no data available yet or the tile is wider than max_chart_datapoints
+        bar.add " "
+        continue
+
+    assert bar.runeLen == tbox.w
+    set_cursor_at(tbox.x, tbox.y + dy)
+    print bar
 
 proc add_log*(self: var Tile, entry: string) =
   ## Add log
@@ -401,9 +483,9 @@ proc idisplay(self: Tile, tbox: TBox, parent: Tile) =
   of Text:
     self.display_text(tbox, parent)
   of HBrailleChart:
-    self.display_braillechart(tbox, parent, false)
+    self.display_hbraillechart(tbox, parent, false)
   of HBrailleFilledChart:
-    self.display_braillechart(tbox, parent, true)
+    self.display_hbraillechart(tbox, parent, true)
 
 
 proc display*(self: Tile) =
