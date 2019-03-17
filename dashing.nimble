@@ -10,3 +10,7 @@ license       = "LGPLv3"
 requires "nim >= 0.17.2"
 
 bin       = @["dashing"]
+
+task functests, "functional tests":
+  exec "nim c tests/functional.nim"
+  exec "./tests/functional"

@@ -9,8 +9,6 @@ import os,
 
 from math import floor
 
-let dlog = open("dashing.log", fmAppend)  # FIXME
-
 # "graphic" elements
 
 const
@@ -72,14 +70,11 @@ type
     r, g, b: int
 
 
-# #
-
 proc print(s: string) =
-  when defined(testing):
-    #echo s.len
-    discard
-  else:
-    stdout.write s
+  stdout.write s
+
+proc flush() =
+  stdout.flushFile
 
 proc set_cursor_at*(x, y: int) =
   when not defined(testing):
@@ -151,7 +146,6 @@ proc draw_borders(self: Tile, tbox: TBox) =
 
   # top border
   set_cursor_at(tbox.x, tbox.y)
-  #log.write("$# $# $# $# $#\n" % [$self.kind, $tbox.x, $tbox.y, $tbox.w, $tbox.h])
   print(border_tl & border_h.repeat(tbox.w - 2) & border_tr)
 
   # left and right
@@ -166,9 +160,26 @@ proc draw_borders(self: Tile, tbox: TBox) =
   print border_bl & border_h.repeat(tbox.w - 2) & border_br
 
 
-proc draw_title(self: Tile, tbox: TBox, fill_all_width: bool) =
-  ##
-  discard # FIXME
+proc draw_title(self: Tile, tbox: TBox) =
+  ## Draw title
+  if self.border_color == "":
+    # no borders
+    return
+
+  let free_space = (tbox.w - self.title.len)
+  if free_space >= 4:
+    # enough space to have white margins
+    set_cursor_at(tbox.x + free_space div 2 - 1, tbox.y)
+    print " " & self.title & " "
+  elif free_space >= 2:
+    # in contact with corners
+    set_cursor_at(tbox.x + 1, tbox.y)
+    print self.title
+  elif free_space >= 0:
+    # truncated
+    set_cursor_at(tbox.x + 1, tbox.y)
+    print self.title[0..(tbox.w - 3)]
+
 
 proc draw_borders_and_title(self: Tile, tbox: TBox): TBox =
   ## Draw borders and title as needed and returns inset (x, y, width, height)
@@ -176,8 +187,7 @@ proc draw_borders_and_title(self: Tile, tbox: TBox): TBox =
     self.draw_borders(tbox)
 
   if self.title.len != 0:
-    let fill_all_width = (self.border_color == "")
-    self.draw_title(tbox, fill_all_width)
+    self.draw_title(tbox)
 
   if self.border_color != "":
     return newTBox(tbox.t, tbox.x + 1, tbox.y + 1, tbox.w - 2, tbox.h - 2)
@@ -188,8 +198,9 @@ proc draw_borders_and_title(self: Tile, tbox: TBox): TBox =
   return newTBox(tbox.t, tbox.x, tbox.y, tbox.w, tbox.h)
 
 proc fill_area(self: Tile, tbox: TBox, c: char) =
-  # FIXME
-  discard
+  for dy in 0..<tbox.h:
+    set_cursor_at(tbox.x, tbox.y + dy)
+    print repeat(c, tbox.w - 1)
 
 proc idisplay(self: Tile, tbox: TBox, parent: Tile)
 
@@ -212,7 +223,7 @@ proc display_vsplit(self: Tile, tbox: TBox, parent: Tile) =
       y += item_height
 
   # Fill leftover area
-  let leftover_y = tbox.h - y + 1
+  let leftover_y = tbox.h - y
   if leftover_y > 0:
     self.fill_area(newTBox(tbox.t, tbox.x, y, tbox.w, leftover_y), ' ')
 
@@ -222,7 +233,7 @@ proc display_hsplit(self: Tile, tbox: TBox, parent: Tile) =
 
   if self.items.len == 0:
       # empty split
-      self.fill_area(tbox, ' ')
+      #self.fill_area(tbox, ' ')
       return
 
   let item_width = tbox.w div len(self.items)
@@ -459,12 +470,9 @@ proc add_log*(self: var Tile, entry: string) =
 
 proc idisplay(self: Tile, tbox: TBox, parent: Tile) =
   ## Render current tile and its items. Recurse into nested splits if any.
-  # park cursor in a safe place and reset color
-  #FIXME print(t.move(terminal_height() - 3, 0) + t.color(0))
-  set_cursor_at(terminal_width() - 3, 0)
 
-  #log.write("I> $# $# $# $#\n" % [$tbox.x, $tbox.y, $tbox.w, $tbox.h])
-  #set_cursor_at(0, terminal_height())
+  #error("I> $# $# $# $#\n" % [$tbox.x, $tbox.y, $tbox.w, $tbox.h])
+
   case self.kind
   of HSplit:
     self.display_hsplit(tbox, parent)
@@ -489,15 +497,16 @@ proc idisplay(self: Tile, tbox: TBox, parent: Tile) =
 
 
 proc display*(self: Tile) =
-  ## Render current tile and its items. Recurse into nested splits if any.
-  let tbox = newTBox("", 1, 1, terminalWidth(), terminalHeight() - 1)
+  ## Render main tile and its items. Recurse into nested splits if any.
+  let tbox = newTBox("", 0, 0, terminalWidth(), terminalHeight())
+  erase_screen()
   self.idisplay(tbox, Tile())
-  # park cursor in a safe place and reset color
-  #FIXME print(t.move(terminal_height() - 3, 0) + t.color(0))
-  set_cursor_at(terminal_width() - 3, 0)
 
-  #set_cursor_at(0, terminal_height())
-  self.idisplay(tbox, Tile())
+  # park cursor in a safe place and reset color
+  set_cursor_at(0, terminal_height())
+
+  # flush once at the end
+  flush()
 
 proc add_dp*(chart: var Tile, val: float) =
   ## Add datapoint
