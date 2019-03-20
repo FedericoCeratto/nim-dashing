@@ -68,7 +68,7 @@ proc demo() =
     ])
   ])
 
-  ui.items[0].items[0].val = 0.5
+  ui.items[0].items[0].val = 5
   sleep 1000
   set_cursor_at(0, terminal_height() - 1)
 ----
